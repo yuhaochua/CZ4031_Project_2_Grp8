@@ -1,12 +1,14 @@
 import psycopg2
 
+HOST = "localhost"
+PORT = 5432
 DATABASE = "postgres"
 USER = "postgres"
 PASSWORD = "12345"
 
 # PostGre Connection
 class DBConn:
-    def __init__(self,host="localhost",port=5432,database=DATABASE,user=USER,password=PASSWORD):
+    def __init__(self,host=HOST,port=PORT,database=DATABASE,user=USER,password=PASSWORD):
         self.host = host
         self.port = port
         self.database = database
