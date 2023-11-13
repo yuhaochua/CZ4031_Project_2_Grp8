@@ -15,11 +15,6 @@ class DBConn:
         self.connection = None
         self.cursor = None
 
-        self.connection = psycopg2.connect(
-            host=host, port=port, database=database, user=user, password=password
-        )
-        self.cursor = self.connection.cursor()
-
     def connect(self):
         try:
             self.connection = psycopg2.connect(
