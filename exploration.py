@@ -1,5 +1,8 @@
 import psycopg2
 
+DATABASE = "postgres"
+USER = "postgres"
+PASSWORD = "12345"
 
 # PostGre Connection
 class PostgreConnection:
@@ -7,9 +10,9 @@ class PostgreConnection:
         self,
         host="localhost",
         port=5432,
-        database=input("Database (default should be 'TPC-H'): "),
-        user=input("User (default should be 'postgres'): "),
-        password=input("Password: "),
+        database=DATABASE,
+        user=USER,
+        password=PASSWORD,
     ):
         self.connection = psycopg2.connect(
             host=host, port=port, database=database, user=user, password=password
