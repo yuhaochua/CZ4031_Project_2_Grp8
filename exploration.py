@@ -20,7 +20,7 @@ class DBConn:
     def connect(self):
         try:
             self.connection = psycopg2.connect(
-                dbname=self.dbname,
+                database = self.database,
                 user=self.user,
                 password=self.password,
                 host=self.host,
