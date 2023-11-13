@@ -5,34 +5,49 @@ USER = "postgres"
 PASSWORD = "12345"
 
 # PostGre Connection
-class PostgreConnection:
-    def __init__(
-        self,
-        host="localhost",
-        port=5432,
-        database=DATABASE,
-        user=USER,
-        password=PASSWORD,
-    ):
+class DBConn:
+    def __init__(self,host="localhost",port=5432,database=DATABASE,user=USER,password=PASSWORD):
+        self.host = host
+        self.port = port
+        self.database = database
+        self.user = user
+        self.password = password
+        self.connection = None
+        self.cursor = None
+
         self.connection = psycopg2.connect(
             host=host, port=port, database=database, user=user, password=password
         )
         self.cursor = self.connection.cursor()
 
-    def execute(self, query, flags=None):
-        if flags != None:
-            flag = "set enable_" + flags + " = off;"
-            self.cursor.execute(flag)
-        self.cursor.execute(query)
-        results = self.cursor.fetchall()
-        if flags != None:
-            flag = "set enable_" + flags + " = on;"
-            self.cursor.execute(flag)
-        return results
+    def connect(self):
+        try:
+            self.connection = psycopg2.connect(
+                dbname=self.dbname,
+                user=self.user,
+                password=self.password,
+                host=self.host,
+                port=self.port
+            )
+            self.cursor = self.connection.cursor()
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(f"Error connecting to PostgreSQL: {error}")
+
+    def execute(self, query):
+        try:
+            self.cursor.execute(query)
+            results = self.cursor.fetchall()
+            return results
+        
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(f"Error executing query: {error}")
+
 
     def close(self):
-        self.cursor.close()
-        self.connection.close()
+        if self.connection:
+            self.cursor.close()
+            self.connection.close()
 
 
 # QEP
