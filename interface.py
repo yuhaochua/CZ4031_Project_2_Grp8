@@ -160,7 +160,10 @@ class Interface:
         # Add content to the canvas
       frame = tk.Frame(canvas)
       canvas.create_window((0, 0), window=frame, anchor="nw")
-      # Configure the scrollbar to interact with the canvas
+
+      canvas.bind("<MouseWheel>", lambda event: canvas.yview_scroll(-int(event.delta / 120), "units"))
+      canvas.bind("<Shift MouseWheel>", lambda event: canvas.xview_scroll(-int(event.delta / 120), "units"))
+
       result = self.executeQuery(qry)
 
       planTime = result["Planning Time"]
@@ -177,10 +180,7 @@ class Interface:
       frame.update_idletasks()
       canvas.config(scrollregion=canvas.bbox("all"))
 
-  def on_scroll(self, event):
-      self.canvas.yview_scroll(-1 * (event.delta // 120), "units")
 
-      
 class QueryPlanNode:
     def __init__(self, nodeType, sharedHit, sharedRead, tempRead, tempWritten, cost=None, relation=None, condition=None, children=None):
         self.nodeType = nodeType
