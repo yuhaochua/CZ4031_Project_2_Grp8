@@ -17,9 +17,14 @@ class Interface:
         self.db_conn.connect()
         # Create the main window
         self.root = tk.Tk()
+        self.root.geometry("1600x800")
         self.root.title("Db visualiser")
         # Create a Text widget for multiline input
         self.text = tk.Text(self.root, height=13, width=60)  # Set height and width as needed
+        self.outputText = tk.Text(self.root, height=5, width=35)  # Set height and width as needed
+        self.outputText.config(state=tk.DISABLED)
+
+
         # Create a label
         self.label = tk.Label(self.root, text="Input:\n")
         self.labelOut = tk.Label(self.root, text="Output:\n")
@@ -29,6 +34,10 @@ class Interface:
         ############################################## label input
         self.label.pack(side=tk.TOP,pady=10)
         self.text.pack(pady=10)
+        # self.outputText.place(relx=0.2, rely=0.1, anchor="ne", x=-10, y=10)
+        self.outputText.place(relx=0.9, rely=0.1, anchor="ne", x=-10, y=10)
+
+        # self.outputText.pack(side="left",pady=10)
         ############################################# execute and output
         self.ExecuteBtn.pack(pady=5)
         
@@ -101,14 +110,16 @@ class Interface:
               node.children.append(expanded_child)
               if node.level < expanded_child.level + 1:
                   node.level = expanded_child.level + 1
-  
       return node
 
 
   def executeQuery(self ,query):
-      self.label.config(text="wait abit pls...")
+      self.label.config(text="Executed")
       explainQuery = "explain (analyze, costs, verbose, buffers, format json)\n" + query
       self.data = qep.retrieve_query_plan(self.db_conn, explainQuery)
+      print(self.data["Planning Time"])
+      print(self.data["Execution Time"])
+      
       return self.data
 
     
@@ -123,7 +134,6 @@ class Interface:
 
       scrollbar_y = tk.Scrollbar(self.root, orient="vertical")
       scrollbar_y.pack(side="right", fill="y")
-
       scrollbar_x = tk.Scrollbar(self.root, orient="horizontal")
       scrollbar_x.pack(side="bottom", fill="x")
 
@@ -139,6 +149,14 @@ class Interface:
       canvas.create_window((0, 0), window=frame, anchor="nw")
       # Configure the scrollbar to interact with the canvas
       result = self.executeQuery(qry)
+
+      planTime = result["Planning Time"]
+      exeTime = result["Execution Time"]
+      self.outputText.config(state=tk.NORMAL)
+      self.outputText.delete("1.0", tk.END)
+      self.outputText.insert(tk.END, f"Planning Time: {planTime}\n")
+      self.outputText.insert(tk.END, f"Execution Time: {exeTime}\n")
+
       plan = result["Plan"]
       root_node = self.create_tree(plan)
       self.draw_tree(canvas, root_node, 400, 50)
