@@ -9,8 +9,28 @@ USER = "postgres"
 PASSWORD = "CHANGE_HERE"
 QUERY = """
 explain (analyze, costs, verbose, buffers, format json)
-select * from customer c, orders o
-where c.c_custkey = o.o_custkey
+select
+      l_orderkey,
+      sum(l_extendedprice * (1 - l_discount)) as revenue,
+      o_orderdate,
+      o_shippriority
+    from
+      customer,
+      orders,
+      lineitem
+    where
+      c_mktsegment = 'BUILDING'
+      and c_custkey = o_custkey
+      and l_orderkey = o_orderkey
+      and o_totalprice > 10
+      and l_extendedprice > 10
+    group by
+      l_orderkey,
+      o_orderdate,
+      o_shippriority
+    order by
+      revenue desc,
+      o_orderdate;
 """
 
 def retrieve_query_plan(db_conn, query):
@@ -46,6 +66,8 @@ def process(node):
 
     elif node["Node Type"] == "Seq Scan":
         result["Relation Name"] = copy.deepcopy(node["Relation Name"])
+        if "Filter" in node.keys():
+          result["Filter"] = copy.deepcopy(node["Filter"])
         result["Total Cost"] = copy.deepcopy(node["Total Cost"])
     
     if "Plans" in node.keys():
