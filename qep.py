@@ -68,6 +68,7 @@ def process(node):
         result["Relation Name"] = copy.deepcopy(node["Relation Name"])
         if "Filter" in node.keys():
           result["Filter"] = copy.deepcopy(node["Filter"])
+
         result["Total Cost"] = copy.deepcopy(node["Total Cost"])
     
     if "Plans" in node.keys():
