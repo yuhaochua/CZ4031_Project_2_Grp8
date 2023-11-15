@@ -3,11 +3,6 @@ import tkinter as tk
 from exploration import DBConn
 import blocks as blks
 import json
-from anytree import Node, RenderTree
-from anytree.exporter import DotExporter
-from PIL import Image, ImageTk
-from io import BytesIO
-import pydotplus
 import qep
 
 class Interface:
