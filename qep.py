@@ -66,7 +66,9 @@ def process(node):
 
     elif node["Node Type"] == "Seq Scan":
         result["Relation Name"] = copy.deepcopy(node["Relation Name"])
-        result["Filter"] = copy.deepcopy(node["Filter"])
+        if "Filter" in node.keys():
+          result["Filter"] = copy.deepcopy(node["Filter"])
+
         result["Total Cost"] = copy.deepcopy(node["Total Cost"])
     
     if "Plans" in node.keys():
