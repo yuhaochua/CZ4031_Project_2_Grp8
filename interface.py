@@ -52,9 +52,16 @@ class Interface:
           canvas.create_text(x, y, text=f'Cost: {node.cost}')
       else:
           canvas.create_text(x, y, text=node.nodeType)
+
+      popup_window = tk.Toplevel(self.root)
+      popup_window.withdraw()
+      popup_label = tk.Label(popup_window)
+      popup_label.pack()
+      buffer = f"Shared Hit: {node.sharedHit}\n Shared Read: {node.sharedRead}\n Temp Read: {node.tempRead}\n Temp Written: {node.tempWritten}"
+
+      canvas.tag_bind(box, "<Leave>", lambda event: self.on_node_leave(event, popup_window))
+      canvas.tag_bind(box, "<Enter>", lambda event, node_id=box: self.on_node_enter(event, node_id, popup_window, popup_label, buffer, hasBlocks=(node.nodeType == "Seq Scan")))
       if node.nodeType == "Seq Scan":
-        canvas.tag_bind(box, "<Enter>", lambda event, node_id=box: self.on_node_enter(event, node_id))
-        canvas.tag_bind(box, "<Leave>", lambda event, node_id=box: self.on_node_leave(event, node_id))
         canvas.tag_bind(box, "<Button-1>", lambda event, node=node: self.on_node_click(event, node))
       child_y = y + y_spacing
       for child in node.children:
@@ -64,13 +71,20 @@ class Interface:
               child_x = x + x_spacing * (node.children.index(child) - len(node.children) / 4) * (node.level/3)
           canvas.create_line(x, y + 30, child_x, child_y - 30, fill="black")
           self.draw_tree(canvas, child, child_x, child_y, x_spacing, y_spacing)
-  def on_node_enter(self, event, node_id):
-    # Change cursor on mouse enter
-    event.widget.config(cursor="hand2")
 
-  def on_node_leave(self,event, node_id):
+  def on_node_enter(self, event, node_id, popup_window, popup_label, buffer, hasBlocks=False):
+    # Change cursor on mouse enter
+    if hasBlocks:
+        event.widget.config(cursor="hand2")
+    x, y, _, _ = event.widget.coords(node_id)
+    popup_window.geometry(f"+{event.x_root + 10}+{event.y_root + 10}")
+    popup_label.config(text=buffer)
+    popup_window.deiconify()
+
+  def on_node_leave(self,event, popup_window):
     # Change cursor back on mouse leave
     event.widget.config(cursor="")
+    popup_window.withdraw()
 
   def on_node_click(self, event, node):
     self.root = tk.Tk()
@@ -80,7 +94,11 @@ class Interface:
     print(f"Clicked on node: {node.nodeType}")
 
   def create_tree(self,result):
-      node = QueryPlanNode(nodeType=result["Node Type"])
+      node = QueryPlanNode(nodeType=result["Node Type"], 
+                           sharedHit=result["Shared Hit Blocks"], 
+                           sharedRead=result["Shared Read Blocks"], 
+                           tempRead=result["Temp Read Blocks"],
+                           tempWritten=result["Temp Written Blocks"])
   
       if result["Node Type"] == "Hash Join":
           node.condition = result["Hash Cond"]
@@ -161,12 +179,18 @@ class Interface:
 
   def on_scroll(self, event):
       self.canvas.yview_scroll(-1 * (event.delta // 120), "units")
+
+      
 class QueryPlanNode:
-    def __init__(self, nodeType, cost=None, relation=None, condition=None, children=None):
+    def __init__(self, nodeType, sharedHit, sharedRead, tempRead, tempWritten, cost=None, relation=None, condition=None, children=None):
         self.nodeType = nodeType
         self.cost = cost
         self.relation = relation
         self.condition = condition
+        self.sharedHit = sharedHit
+        self.sharedRead = sharedRead
+        self.tempRead = tempRead
+        self.tempWritten = tempWritten
         self.children = children or []
         self.level = 1
 
