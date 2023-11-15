@@ -86,7 +86,7 @@ select
         # button2.pack(pady=5)
 
   def draw_tree(self, canvas, node, x, y, x_spacing=250, y_spacing=100):
-      canvas.create_rectangle(x - 100, y - 30, x + 100, y + 30)
+      box = canvas.create_rectangle(x - 100, y - 30, x + 100, y + 30, fill = "white")
       if node.relation:
           canvas.create_text(x, y-20, text=node.nodeType)
           canvas.create_text(x, y, text=f'Relation: {node.relation}')
@@ -100,7 +100,10 @@ select
           canvas.create_text(x, y, text=f'Cost: {node.cost}')
       else:
           canvas.create_text(x, y, text=node.nodeType)
-  
+      if node.nodeType == "Seq Scan":
+        canvas.tag_bind(box, "<Enter>", lambda event, node_id=box: self.on_node_enter(event, node_id))
+        canvas.tag_bind(box, "<Leave>", lambda event, node_id=box: self.on_node_leave(event, node_id))
+        canvas.tag_bind(box, "<Button-1>", lambda event, node=node: self.on_node_click(event, node))
       child_y = y + y_spacing
       for child in node.children:
           if len(node.children) == 1:
@@ -109,7 +112,17 @@ select
               child_x = x + x_spacing * (node.children.index(child) - len(node.children) / 4) * (node.level/3)
           canvas.create_line(x, y + 30, child_x, child_y - 30, fill="black")
           self.draw_tree(canvas, child, child_x, child_y, x_spacing, y_spacing)
-  
+  def on_node_enter(self, event, node_id):
+    # Change cursor on mouse enter
+    event.widget.config(cursor="hand2")
+
+  def on_node_leave(self,event, node_id):
+    # Change cursor back on mouse leave
+    event.widget.config(cursor="")
+
+  def on_node_click(self, event, node):
+    # You can customize this function to display content or perform any action
+    print(f"Clicked on node: {node.nodeType}")
   def create_tree(self,result):
       node = QueryPlanNode(nodeType=result["Node Type"])
   
