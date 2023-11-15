@@ -8,12 +8,54 @@ from anytree.exporter import DotExporter
 from PIL import Image, ImageTk
 from io import BytesIO
 import pydotplus
-
+import qep
 
 class Interface:
 
   def __init__(self):
-        self.defaultQry = "select *\nfrom lineitem\nWHERE (l_shipdate >= '1995-01-01') AND (l_shipdate <= '1996-12-31')"
+        self.db_conn = DBConn()
+        self.db_conn.connect()
+        self.inputQuery = """
+select
+      o_year,
+      sum(case
+        when nation = 'BRAZIL' then volume
+        else 0
+      end) / sum(volume) as mkt_share
+    from
+      (
+        select
+          DATE_PART('YEAR',o_orderdate) as o_year,
+          l_extendedprice * (1 - l_discount) as volume,
+          n2.n_name as nation
+        from
+          part,
+          supplier,
+          lineitem,
+          orders,
+          customer,
+          nation n1,
+          nation n2,
+          region
+        where
+          p_partkey = l_partkey
+          and s_suppkey = l_suppkey
+          and l_orderkey = o_orderkey
+          and o_custkey = c_custkey
+          and c_nationkey = n1.n_nationkey
+          and n1.n_regionkey = r_regionkey
+          and r_name = 'AMERICA'
+          and s_nationkey = n2.n_nationkey
+          and o_orderdate between '1995-01-01' and '1996-12-31'
+          and p_type = 'ECONOMY ANODIZED STEEL'
+          and s_acctbal > 10
+          and l_extendedprice > 100
+      ) as all_nations
+    group by
+      o_year
+    order by
+      o_year;
+      """
 
         # Create the main window
         self.root = tk.Tk()
@@ -21,7 +63,7 @@ class Interface:
         self.photo = None
         # Create a Text widget for multiline input
         self.text = tk.Text(self.root, height=13, width=60)  # Set height and width as needed
-        self.text.insert(tk.END, self.defaultQry)
+        # self.text.insert(tk.END, self.inputQuery)
         # Create an output Text widget
         self.output_text = tk.Text(self.root, height=13, width=60, state=tk.DISABLED)  # Set height and width as needed, initially read-only
         
@@ -33,17 +75,12 @@ class Interface:
         # self.clearBtn = tk.Button(root, text="Clear Input", command=self.clearText)
         scrollbar_x = tk.Scrollbar(self.root, orient=tk.HORIZONTAL)
         self.text_widget = tk.Text(self.root, height=50, width=110, wrap=tk.NONE,xscrollcommand=scrollbar_x.set)
-
-          # Pack the label and buttons into the window
         ############################################## label input
         self.label.pack(side=tk.TOP,pady=10)
         self.text.pack(pady=10)
         ############################################# execute and output
         self.ExecuteBtn.pack(pady=5)
-        # clearBtn.pack(pady=5)
-        # Display the image in a label
-        # self.labelOut.pack(side=tk.TOP,pady=10)
-        # self.output_text.pack(pady=5)
+        
         ################################################## tree
       # Create a text widget to display the tree structure
         scrollbar_x.pack(side=tk.BOTTOM, fill=tk.X)
@@ -53,23 +90,20 @@ class Interface:
         # button2.pack(pady=5)
 
   def executeQuery(self ,query):
-      # self.output_text.config(state=tk.NORMAL)  # Set the text widget to editable
-      # self.output_text.delete("1.0", tk.END) # Clear previous content
-      # self.output_text.insert(tk.END, query)  # Insert input text
-      # self.output_text.config(state=tk.DISABLED)  # Set the text widget to read-only
       self.label.config(text="wait abit pls...")
-      # db = DBConn()
-      # db.__init__()
-      # db.connect()
+      explainQuery = "explain (analyze, costs, verbose, buffers, format json)\n" + query
+      self.data = qep.retrieve_query_plan(self.db_conn, explainQuery)
+      
       # Create the tree
       # Create the root node
+    #   self.data = json.loads(json_data)
       root = Node("Query Plan")
       self.create_tree(self.data, parent=root)
+      self.label.config(text="Executed!")
+
       self.text_widget.delete(1.0, tk.END)  # Clear previous content
       for pre, _, node in RenderTree(root):
         self.text_widget.insert(tk.END, "%s%s\n" % (pre, node.name))
-
-
 
       # Print the tree structure
       # for pre, fill, node in RenderTree(root):
@@ -80,11 +114,13 @@ class Interface:
         # self.output_text.config(state=tk.DISABLED)  # Set the text widget to read-only
         # print("%s%s" % (pre, node.name))
 
-      
-      
-      # db.execute(query)
-
-
+  def save_input(self):
+      user_input = self.text.get("1.0", tk.END)
+      with open("Query.txt", "w") as file:
+        file.write(user_input)
+  def getInput(self):
+      return self.text.get("1.0", tk.END)
+    
   def start(self):
       # Start the Tkinter event loop
       self.root.mainloop()
@@ -99,84 +135,6 @@ class Interface:
   #     text.delete("1.0", tk.END)
   #     label.config(text="Cleared!")
 
-  json_data = '''
-    {
-        "Plan": {
-            "Node Type": "Sort",
-            "Plans": [
-                {
-                    "Node Type": "Aggregate",
-                    "Plans": [
-                        {
-                            "Node Type": "Gather Merge",
-                            "Plans": [
-                                {
-                                    "Node Type": "Aggregate",
-                                    "Plans": [
-                                        {
-                                            "Node Type": "Sort",
-                                            "Plans": [
-                                                {
-                                                    "Node Type": "Hash Join",
-                                                    "Hash Cond": "(lineitem.l_orderkey = orders.o_orderkey)",
-                                                    "Total Cost": 197052.4,
-                                                    "Plans": [
-                                                        {
-                                                            "Node Type": "Seq Scan",
-                                                            "Relation Name": "lineitem",
-                                                            "Total Cost": 143857.55
-                                                        },
-                                                        {
-                                                            "Node Type": "Hash",
-                                                            "Parent Relationship": "Inner",
-                                                            "Total Cost": 40128.41,
-                                                            "Hash Buckets": 524288,
-                                                            "Plans": [
-                                                                {
-                                                                    "Node Type": "Hash Join",
-                                                                    "Hash Cond": "(orders.o_custkey = customer.c_custkey)",
-                                                                    "Total Cost": 40128.41,
-                                                                    "Plans": [
-                                                                        {
-                                                                            "Node Type": "Seq Scan",
-                                                                            "Relation Name": "orders",
-                                                                            "Total Cost": 33948.5
-                                                                        },
-                                                                        {
-                                                                            "Node Type": "Hash",
-                                                                            "Parent Relationship": "Inner",
-                                                                            "Total Cost": 4381.25,
-                                                                            "Hash Buckets": 32768,
-                                                                            "Plans": [
-                                                                                {
-                                                                                    "Node Type": "Seq Scan",
-                                                                                    "Relation Name": "customer",
-                                                                                    "Total Cost": 4381.25
-                                                                                }
-                                                                            ]
-                                                                        }
-                                                                    ]
-                                                                }
-                                                            ]
-                                                        }
-                                                    ]
-                                                }
-                                            ]
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
-        "Planning Time": 2.721,
-        "Triggers": [],
-        "Execution Time": 1456.844
-    }
-    '''
-  data = json.loads(json_data)
 
 # Function to create tree structure
   def create_tree(self,data, parent=None):
@@ -196,9 +154,147 @@ class Interface:
           for item in data:
               node = Node("", parent=parent)
               self.create_tree(item, parent=node)
-
+#########################################################################################
 
 
 
   ##########################################################################################
 
+
+json_data = '''
+{
+    "Plan": {
+        "Node Type": "Aggregate",
+        "Plans": [
+            {
+                "Node Type": "Gather Merge",
+                "Plans": [
+                    {
+                        "Node Type": "Aggregate",
+                        "Plans": [
+                            {
+                                "Node Type": "Sort",
+                                "Plans": [
+                                    {
+                                        "Node Type": "Nested Loop",
+                                        "Plans": [
+                                            {
+                                                "Node Type": "Nested Loop",
+                                                "Plans": [
+                                                    {
+                                                        "Node Type": "Nested Loop",
+                                                        "Plans": [
+                                                            {
+                                                                "Node Type": "Nested Loop",
+                                                                "Plans": [
+                                                                    {
+                                                                        "Node Type": "Hash Join",
+                                                                        "Hash Cond": "(orders.o_custkey = customer.c_custkey)",
+                                                                        "Total Cost": 40716.15,
+                                                                        "Plans": [
+                                                                            {
+                                                                                "Node Type": "Seq Scan",
+                                                                                "Relation Name": "orders",
+                                                                                "Total Cost": 35511.0
+                                                                            },
+                                                                            {
+                                                                                "Node Type": "Hash",
+                                                                                "Parent Relationship": "Inner",
+                                                                                "Total Cost": 4492.32,
+                                                                                "Hash Buckets": 32768,
+                                                                                "Plans": [
+                                                                                    {
+                                                                                        "Node Type": "Hash Join",
+                                                                                        "Hash Cond": "(customer.c_nationkey = n1.n_nationkey)",
+                                                                                        "Total Cost": 4492.32,
+                                                                                        "Plans": [
+                                                                                            {
+                                                                                                "Node Type": "Seq Scan",
+                                                                                                "Relation Name": "customer",
+                                                                                                "Total Cost": 4229.7
+                                                                                            },
+                                                                                            {
+                                                                                                "Node Type": "Hash",
+                                                                                                "Parent Relationship": "Inner",
+                                                                                                "Total Cost": 24.29,
+                                                                                                "Hash Buckets": 1024,
+                                                                                                "Plans": [
+                                                                                                    {
+                                                                                                        "Node Type": "Hash Join",
+                                                                                                        "Hash Cond": "(n1.n_regionkey = region.r_regionkey)",
+                                                                                                        "Total Cost": 24.29,
+                                                                                                        "Plans": [
+                                                                                                            {
+                                                                                                                "Node Type": "Seq Scan",
+                                                                                                                "Relation Name": "nation",
+                                                                                                                "Total Cost": 11.7
+                                                                                                            },
+                                                                                                            {
+                                                                                                                "Node Type": "Hash",
+                                                                                                                "Parent Relationship": "Inner",
+                                                                                                                "Total Cost": 12.12,
+                                                                                                                "Hash Buckets": 1024,
+                                                                                                                "Plans": [
+                                                                                                                    {
+                                                                                                                        "Node Type": "Seq Scan",
+                                                                                                                        "Relation Name": "region",
+                                                                                                                        "Total Cost": 12.12
+                                                                                                                    }
+                                                                                                                ]
+                                                                                                            }
+                                                                                                        ]
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        ]
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "Node Type": "Index Scan",
+                                                                        "Parent Relationship": "Inner",
+                                                                        "Total Cost": 1.96
+                                                                    }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "Node Type": "Index Scan",
+                                                                "Parent Relationship": "Inner",
+                                                                "Total Cost": 0.44
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "Node Type": "Index Scan",
+                                                        "Parent Relationship": "Inner",
+                                                        "Total Cost": 0.31
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "Node Type": "Memoize",
+                                                "Plans": [
+                                                    {
+                                                        "Node Type": "Index Scan",
+                                                        "Parent Relationship": "Outer",
+                                                        "Total Cost": 0.17
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "Planning Time": 28.775,
+    "Triggers": [],
+    "Execution Time": 3795.251
+}
+    '''
