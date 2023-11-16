@@ -49,6 +49,10 @@ def retrieve_query_plan(db_conn, query):
 def process(node):
     result = {}
     result["Node Type"] = copy.deepcopy(node["Node Type"])
+    result["Shared Hit Blocks"] = copy.deepcopy(node["Shared Hit Blocks"])
+    result["Shared Read Blocks"] = copy.deepcopy(node["Shared Read Blocks"])
+    result["Temp Read Blocks"] = copy.deepcopy(node["Temp Read Blocks"])
+    result["Temp Written Blocks"] = copy.deepcopy(node["Temp Written Blocks"])
 
     if node["Node Type"] == "Hash Join":
         result["Hash Cond"] = copy.deepcopy(node["Hash Cond"])
