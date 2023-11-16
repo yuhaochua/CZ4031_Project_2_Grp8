@@ -34,6 +34,7 @@ class Interface:
         # logic for graceful shutdown
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
+        # for tracking the canvas and scrollbars for current query being executed
         self.canvas = None
         self.scrollbar_x = None
         self.scrollbar_y = None
