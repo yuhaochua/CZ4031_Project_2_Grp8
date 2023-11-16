@@ -20,21 +20,17 @@ class Interface:
         self.outputText = tk.Text(self.root, height=5, width=35)  # Set height and width as needed
         self.outputText.config(state=tk.DISABLED)
 
-
         # Create a label
-        self.label = tk.Label(self.root, text="Input:\n")
+        self.label = tk.Label(self.root, text="Enter SQL query to generate QEP:\n")
         self.labelOut = tk.Label(self.root, text="Output:\n")
         # Create two buttons
         self.ExecuteBtn = tk.Button(self.root, text="Execute", command=self.processQuery)
-        # self.clearBtn = tk.Button(root, text="Clear Input", command=self.clearText)
-        ############################################## label input
+        ############################################## input
         self.label.pack(side=tk.TOP,pady=10)
         self.text.pack(pady=10)
-        # self.outputText.place(relx=0.2, rely=0.1, anchor="ne", x=-10, y=10)
         self.outputText.place(relx=0.9, rely=0.1, anchor="ne", x=-10, y=10)
 
-        # self.outputText.pack(side="left",pady=10)
-        ############################################# execute and output
+        ############################################# execute button
         self.ExecuteBtn.pack(pady=5)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         
@@ -94,10 +90,7 @@ class Interface:
     popup_window.withdraw()
 
   def on_node_click(self, event, node):
-    # self.root = tk.Tk()
-    # self.root.title("Db visualiser")
-    # self.text = tk.Text(self.root, height=13, width=60)  # Set height and width as needed
-    # You can customize this function to display content or perform any action
+    # Draw the blocks once the node is clicked
     print(f"Clicked on node: {node.nodeType}")
     blocks = exploration.retrieve_blocks(self.db_conn, node.relation, node.condition)
     buffer = Blocks(self.db_conn, node.relation, blocks)
@@ -137,12 +130,12 @@ class Interface:
 
 
   def executeQuery(self ,query):
-      self.label.config(text="Executed")
+      # calls exploration.retrieve_query_plan to get json data
+      self.label.config(text="Executed!")
       explainQuery = "explain (analyze, costs, verbose, buffers, format json)\n" + query
       self.data = exploration.retrieve_query_plan(self.db_conn, explainQuery)
       print(self.data["Planning Time"])
       print(self.data["Execution Time"])
-      
       return self.data
 
     
@@ -152,9 +145,9 @@ class Interface:
 
 
   def processQuery(self):
-      # label.config(text="Button 2 Clicked!")
+      # function that is being called when execute button is clicked
+      # creates canvas window for the tree
       qry = self.text.get("1.0", tk.END).strip()
-
       scrollbar_y = tk.Scrollbar(self.root, orient="vertical")
       scrollbar_y.pack(side="right", fill="y")
       scrollbar_x = tk.Scrollbar(self.root, orient="horizontal")
@@ -182,6 +175,7 @@ class Interface:
       self.outputText.delete("1.0", tk.END)
       self.outputText.insert(tk.END, f"Planning Time: {planTime}\n")
       self.outputText.insert(tk.END, f"Execution Time: {exeTime}\n")
+      self.outputText.config(state=tk.DISABLED)
 
       plan = result["Plan"]
       root_node = self.create_tree(plan)
@@ -189,6 +183,7 @@ class Interface:
 
       frame.update_idletasks()
       canvas.config(scrollregion=canvas.bbox("all"))
+
 
 
 class QueryPlanNode:
@@ -255,8 +250,7 @@ class Blocks:
         self.blocks = None
         self.next_set_blocks()
         self.frame.update_idletasks()
-        self.canvas.config(scrollregion=self.canvas.bbox("all"))
-
+        self.canvas.config(scrollregion=self.frame.bbox("all"))
 
     def start(self):
         self.root.mainloop()
@@ -361,7 +355,7 @@ class Blocks:
 
             if(modTuple == 9):
                 level += 1 # start drawing blocks on next level
-        
+
         self.tupleRows = level + 1
         self.frame.update_idletasks()
         self.canvas.config(scrollregion=self.canvas.bbox("all"))
