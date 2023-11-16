@@ -36,8 +36,12 @@ class Interface:
         # self.outputText.pack(side="left",pady=10)
         ############################################# execute and output
         self.ExecuteBtn.pack(pady=5)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         
-
+  def on_close(self):
+      self.db_conn.close()
+      self.root.destroy()
+  
   def draw_tree(self, canvas, node, x, y, x_spacing=250, y_spacing=120):
       box = canvas.create_rectangle(x - 100, y - 30, x + 100, y + 50, fill = "white")
       if node.relation:
