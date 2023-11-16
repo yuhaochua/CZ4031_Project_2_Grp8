@@ -3,9 +3,8 @@ from ast import literal_eval
 from collections import OrderedDict
 import tkinter as tk
 from exploration import DBConn
-import blocks as blks
 import json
-import qep
+import exploration
 
 class Interface:
 
@@ -136,7 +135,7 @@ class Interface:
   def executeQuery(self ,query):
       self.label.config(text="Executed")
       explainQuery = "explain (analyze, costs, verbose, buffers, format json)\n" + query
-      self.data = qep.retrieve_query_plan(self.db_conn, explainQuery)
+      self.data = exploration.retrieve_query_plan(self.db_conn, explainQuery)
       print(self.data["Planning Time"])
       print(self.data["Execution Time"])
       
