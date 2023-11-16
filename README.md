@@ -32,13 +32,15 @@ DSP Project 2
    
    `source dbsp/bin/activate`
 
-3.  **Install Dependencies**
+3. **Install Dependencies**
 
    Use the requirements.txt file to install the necessary dependencies.
 
    `pip install -r requirements.txt`
 
 4.  **Running and using the GUI**
+   
+   Before launching UI, ensure that db connection details are correct in `exploration.py`, on lines 6 to 10
 
    Launch the GUI.
 
