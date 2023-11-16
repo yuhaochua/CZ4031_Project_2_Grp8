@@ -1,9 +1,6 @@
 #main
-
 from interface import Interface
-import json
-
 
 if __name__ == "__main__":
-    interface = Interface()
-    interface.start()
+    interface = Interface() # initialise the GUI object
+    interface.start() # start the tkinter window
