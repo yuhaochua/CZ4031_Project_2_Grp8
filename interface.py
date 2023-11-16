@@ -34,6 +34,10 @@ class Interface:
         # logic for graceful shutdown
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
+        self.canvas = None
+        self.scrollbar_x = None
+        self.scrollbar_y = None
+
     def start(self):
         # start the Tkinter event loop
         self.root.mainloop()
@@ -165,27 +169,35 @@ class Interface:
         # parse SQL query
         qry = self.text.get("1.0", tk.END).strip()
 
+        # remove any canvas widgets and scrollbar from previous queries
+        if self.canvas:
+            self.canvas.destroy()
+        if self.scrollbar_y:
+            self.scrollbar_y.destroy()
+        if self.scrollbar_x:
+            self.scrollbar_x.destroy()
+
         # initialise scrollbars
-        scrollbar_y = tk.Scrollbar(self.root, orient="vertical")
-        scrollbar_y.pack(side="right", fill="y")
-        scrollbar_x = tk.Scrollbar(self.root, orient="horizontal")
-        scrollbar_x.pack(side="bottom", fill="x")
+        self.scrollbar_y = tk.Scrollbar(self.root, orient="vertical")
+        self.scrollbar_y.pack(side="right", fill="y")
+        self.scrollbar_x = tk.Scrollbar(self.root, orient="horizontal")
+        self.scrollbar_x.pack(side="bottom", fill="x")
 
         # create a canvas and link it with the scrollbars
-        canvas = tk.Canvas(self.root, xscrollcommand=scrollbar_x.set, yscrollcommand=scrollbar_y.set)
-        canvas.pack(side="left", fill="both", expand=True)
+        self.canvas = tk.Canvas(self.root, xscrollcommand=self.scrollbar_x.set, yscrollcommand=self.scrollbar_y.set)
+        self.canvas.pack(side="left", fill="both", expand=True)
 
         # link scrollbars to canvas
-        scrollbar_x.config(command=canvas.xview)
-        scrollbar_y.config(command=canvas.yview)
+        self.scrollbar_x.config(command=self.canvas.xview)
+        self.scrollbar_y.config(command=self.canvas.yview)
 
         # creates canvas window for the tree
-        frame = tk.Frame(canvas)
-        canvas.create_window((0, 0), window=frame, anchor="nw")
+        frame = tk.Frame(self.canvas)
+        self.canvas.create_window((0, 0), window=frame, anchor="nw")
 
         # bind mousewheel events to scroll canvas
-        canvas.bind("<MouseWheel>", lambda event: canvas.yview_scroll(-int(event.delta / 120), "units"))
-        canvas.bind("<Shift MouseWheel>", lambda event: canvas.xview_scroll(-int(event.delta / 120), "units"))
+        self.canvas.bind("<MouseWheel>", lambda event: self.canvas.yview_scroll(-int(event.delta / 120), "units"))
+        self.canvas.bind("<Shift MouseWheel>", lambda event: self.canvas.xview_scroll(-int(event.delta / 120), "units"))
 
         # execute SQL to get query plan json
         result = self.executeQuery(qry)
@@ -202,10 +214,10 @@ class Interface:
         # parse query plan json to create and draw query plan tree
         plan = result["Plan"]
         root_node = self.create_tree(plan)
-        self.draw_tree(canvas, root_node, 400, 50)
+        self.draw_tree(self.canvas, root_node, 400, 50)
 
         frame.update_idletasks()
-        canvas.config(scrollregion=canvas.bbox("all"))
+        self.canvas.config(scrollregion=self.canvas.bbox("all"))
 
 
 
