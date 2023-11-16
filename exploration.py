@@ -88,6 +88,9 @@ def process(node):
         result["Relation Name"] = copy.deepcopy(node["Relation Name"])
         if "Filter" in node.keys():
           result["Filter"] = copy.deepcopy(node["Filter"])
+          if "Alias" in node.keys():
+            alias = copy.deepcopy(node["Alias"])
+            result["Filter"] = result["Filter"].replace(alias, result["Relation Name"])
 
         result["Total Cost"] = copy.deepcopy(node["Total Cost"])
     
