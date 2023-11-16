@@ -1,3 +1,5 @@
+from ast import literal_eval
+from collections import OrderedDict
 import psycopg2
 import copy
 
@@ -103,5 +105,56 @@ def process(node):
 
 
 # Blocks
+def retrieve_blocks(db_conn: DBConn, table, filter):
+    blocks = []
+    unique_pages = OrderedDict()
 
+    if filter:
+        query = f'SELECT ctid FROM {table} WHERE {filter}'
+    else:
+        query = f'SELECT ctid FROM {table}'
+    
+    results = db_conn.execute(query)
+    # print()
+    
+    for ctid in results:
+        page_offset,  = ctid # retrieve the tuple containing page + offset
+        page, offset = literal_eval(page_offset) # unpack tuple
+        unique_pages.setdefault(page)
+
+    pages = list(unique_pages.keys())
+    print(len(pages))
+
+    return pages
+    
+    # else:
+    #     print("no filter")
+    #     current_page = 0
+    #     query = f'SELECT ctid, * FROM {table}'
+    #     print(query)
+    #     results = self.db_conn.execute(query)
+    #     print(results)
+
+    #     block = []
+    #     for ctid in results:
+    #         page_offset, *record = ctid
+    #         page, offset = literal_eval(page_offset) # unpack tuple
+    #         if page != current_page:
+    #             blocks.append(block)
+    #             block = []
+    #             current_page = page
+    #         print(record)
+    #         block.append(record)
+    
+    #     blocks.append(block)
+
+    # return blocks
+    
+
+def retrieve_block(db_conn: DBConn, table, page):
+    query = f'SELECT * FROM {table} WHERE (ctid::text::point)[0] = {page}'
+
+    results = db_conn.execute(query)
+    
+    return results
 

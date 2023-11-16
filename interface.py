@@ -95,8 +95,8 @@ class Interface:
     # self.text = tk.Text(self.root, height=13, width=60)  # Set height and width as needed
     # You can customize this function to display content or perform any action
     print(f"Clicked on node: {node.nodeType}")
-    blocks = self.retrieve_blocks(node.relation, node.condition)
-    buffer = Blocks(blocks)
+    blocks = exploration.retrieve_blocks(self.db_conn, node.relation, node.condition)
+    buffer = Blocks(self.db_conn, node.relation, blocks)
     buffer.start()
 
   def create_tree(self,result):
@@ -186,63 +186,6 @@ class Interface:
       frame.update_idletasks()
       canvas.config(scrollregion=canvas.bbox("all"))
 
-    
-  def retrieve_blocks(self, table, filter):
-        blocks = []
-        unique_pages = OrderedDict()
-
-        if filter:
-            query = f'SELECT ctid FROM {table} WHERE {filter}'
-        
-            results = self.db_conn.execute(query)
-            # print()
-            
-            for ctid in results:
-                page_offset,  = ctid # retrieve the tuple containing page + offset
-                page, offset = literal_eval(page_offset) # unpack tuple
-                unique_pages.setdefault(page)
-
-            pages = list(unique_pages.keys())
-            print(len(pages))
-
-            # count = 1   
-            for page in pages:
-                block = self.retrieve_block(table, page)
-                # print(block)
-                # print(count)
-                # count += 1
-                blocks.append(block.copy())
-        
-        else:
-            print("no filter")
-            current_page = 0
-            query = f'SELECT ctid, * FROM {table}'
-            print(query)
-            results = self.db_conn.execute(query)
-            print(results)
-
-            block = []
-            for ctid in results:
-                page_offset, *record = ctid
-                page, offset = literal_eval(page_offset) # unpack tuple
-                if page != current_page:
-                    blocks.append(block)
-                    block = []
-                    current_page = page
-                print(record)
-                block.append(record)
-        
-            blocks.append(block)
-
-        return blocks
-
-  def retrieve_block(self, table, page):
-        query = f'SELECT * FROM {table} WHERE (ctid::text::point)[0] = {page}'
-
-        results = self.db_conn.execute(query)
-        
-        return results
-
 
 class QueryPlanNode:
     def __init__(self, nodeType, sharedHit, sharedRead, tempRead, tempWritten, cost=None, relation=None, condition=None, children=None):
@@ -258,21 +201,26 @@ class QueryPlanNode:
         self.level = 1
 
 class Blocks:
-    def __init__(self, blocks):
-        # self.db_conn = db_conn
+    def __init__(self, db_conn: DBConn, relation, pages):
+        self.db_conn = db_conn
         # self.db_conn.connect()
         # self.node = node
         # blocks = self.retrieve_blocks(self.node.relation, self.node.condition)
-        self.blocks = blocks
+        self.pages = pages
+        self.relation = relation
+        self.pageStartIndex = 0
+
         self.root = tk.Tk()
-        self.root.geometry("800x400")
+        self.root.geometry("1400x400")
         self.root.title("Blocks Accessed")
         self.tuplesText = None # String that says Tuples in Block:
         self.tupleText = None # String that says Tuple:
-        self.tuples = []
-        self.tupleNums = []
+        self.drawnBlocks = [] # What blocks have been drawn
+        self.drawnBlocksText = [] # Block ID drawn on the blocks
+        self.tuples = [] # what tuples have been drawn
+        self.tupleNums = [] # tuple id drawn on the blocks
         self.tupleRows = 0 # so that we know where to print the tuple
-
+        self.root.focus_force()
 
         scrollbar_y = tk.Scrollbar(self.root, orient="vertical")
         scrollbar_y.pack(side="right", fill="y")
@@ -283,36 +231,101 @@ class Blocks:
         scrollbar_x.config(command=self.canvas.xview)
         scrollbar_y.config(command=self.canvas.yview)
             # Add content to the canvas
-        frame = tk.Frame(self.canvas)
+        self.frame = tk.Frame(self.canvas)
         
-        self.canvas.create_window((0, 0), window=frame, anchor="nw")
+        self.canvas.create_window((0, 0), window=self.frame, anchor="center")
 
         self.canvas.bind("<MouseWheel>", lambda event: self.canvas.yview_scroll(-int(event.delta / 120), "units"))
         self.canvas.bind("<Shift MouseWheel>", lambda event: self.canvas.xview_scroll(-int(event.delta / 120), "units"))
-        self.draw_blocks(200, 50)
-        frame.update_idletasks()
+
+        
+        self.previousBtn = tk.Button(self.canvas, text="PREVIOUS", command=self.previous_set_blocks, state=tk.DISABLED)
+        self.previousBtn.place(x=150, y=250)
+
+        if len(self.pages) > 50:
+            self.nextBtn = tk.Button(self.canvas, text="NEXT", command=lambda: self.next_set_blocks(offset=50), state=tk.NORMAL)
+        else:
+            self.nextBtn = tk.Button(self.canvas, text="NEXT", command=lambda: self.next_set_blocks(offset=50), state=tk.DISABLED)
+        self.nextBtn.place(x=250, y=250)
+
+        self.blocks = None
+        self.next_set_blocks()
+        self.frame.update_idletasks()
         self.canvas.config(scrollregion=self.canvas.bbox("all"))
-        print(len(blocks))
+
 
     def start(self):
         self.root.mainloop()
 
-    def draw_blocks(self, x, y):
+    def draw_blocks(self, x, y, pageStart):
         level = 0
         self.canvas.create_text(x-100, y, text='Blocks Accessed: ')
-        for blkNum in range(len(self.blocks)):
+        for blkNum in range(pageStart, pageStart + len(self.blocks)):
             modBlk = blkNum % 10
             block = self.canvas.create_rectangle(x-20+modBlk*40, y-20+level*40, x+20+modBlk*40, y+20+level*40, fill = "white")
-            self.canvas.create_text(x+modBlk*40, y+level*40, text=f'{blkNum}')
+            self.drawnBlocks.append(block)
+            text = self.canvas.create_text(x+modBlk*40, y+level*40, text=f'{blkNum}')
+            self.drawnBlocksText.append(text)
             self.canvas.tag_bind(block, "<Enter>", lambda event, block_id=block: self.on_block_enter(event, block_id))
             self.canvas.tag_bind(block, "<Leave>", lambda event, block_id=block: self.on_block_leave(event, block_id))
             self.canvas.tag_bind(block, "<Button-1>", lambda event, block_id=block, blkNum=blkNum: self.on_block_click(event, block_id, blkNum, x, y))
+
 
             if(modBlk == 9):
                 level += 1 # start drawing blocks on next level
 
         
+    def next_set_blocks(self, offset=0):
+        self.clear_blocks()
+        self.clear_tuples()
+        if self.pageStartIndex > 0:
+            self.previousBtn['state'] = tk.NORMAL
+        
+        self.pageStartIndex += offset
+        
+        blocks = []
+        count = 1
+        for page in self.pages[self.pageStartIndex:]:
+            blocks.append(exploration.retrieve_block(self.db_conn, self.relation, page))
+            count += 1
+            if count > 50:
+                break
+        
+        if count > 50: # so that the blocks count correctly
+            count -= 1
 
+
+        if self.pageStartIndex + count >= len(self.pages): # last possible set of blocks
+            self.nextBtn['state'] = tk.DISABLED
+
+        self.blocks = blocks.copy()
+        self.draw_blocks(200, 50, self.pageStartIndex)
+
+
+    def previous_set_blocks(self):
+        self.clear_blocks()
+        self.clear_tuples()
+
+        self.pageStartIndex -= 50
+        print(self.pageStartIndex)
+        if self.pageStartIndex <= 0:
+            self.previousBtn['state'] = tk.DISABLED
+        if self.nextBtn['state'] == tk.DISABLED:
+            self.nextBtn['state'] = tk.NORMAL
+
+        blocks = []
+        count = 1
+        for page in self.pages[self.pageStartIndex:]:
+            blocks.append(exploration.retrieve_block(self.db_conn, self.relation, page))
+            count += 1
+            if count > 50:
+                break
+        
+
+        self.blocks = blocks.copy()
+        self.draw_blocks(200, 50, self.pageStartIndex)
+
+    
     def on_block_enter(self, event, block_id):
         # Change cursor on mouse enter
         event.widget.config(cursor="hand2")
@@ -325,21 +338,13 @@ class Blocks:
         event.widget.config(cursor="")
 
     def on_block_click(self, event, block_id, blkNum, x, y):
-        if self.tuplesText:
-            self.canvas.delete(self.tuplesText)
-        for tuple in self.tuples:
-            self.canvas.delete(tuple)
-        for tupleNum in self.tupleNums:
-            self.canvas.delete(tupleNum)
-        if self.tupleText:
-            self.canvas.delete(self.tupleText)
+        self.clear_tuples() # clear the tuple drawings
 
-        self.tuples = []
         x += 500
         self.tuplesText = self.canvas.create_text(x, y, text=f'Tuples in Block {blkNum}: ')
         x += 100
         level = 0
-        for tupleNum in range(len(self.blocks[blkNum])):
+        for tupleNum in range(len(self.blocks[blkNum%50])):
             modTuple = tupleNum % 10
             tuple = self.canvas.create_rectangle(x-20+modTuple*40, y-20+level*40, x+20+modTuple*40, y+20+level*40, fill = "white")
             self.tuples.append(tuple) # Keep track of what tuples are being drawn
@@ -354,6 +359,8 @@ class Blocks:
                 level += 1 # start drawing blocks on next level
         
         self.tupleRows = level + 1
+        self.frame.update_idletasks()
+        self.canvas.config(scrollregion=self.canvas.bbox("all"))
 
     def on_tuple_enter(self, event, tuple_id):
         # Change cursor on mouse enter
@@ -370,5 +377,29 @@ class Blocks:
         if self.tupleText:
             self.canvas.delete(self.tupleText)
         y += self.tupleRows * 40
-        self.tupleText = self.canvas.create_text(x, y, anchor='w', text=f'Tuple {tupleNum}: {self.blocks[blkNum][tupleNum]}')
+        self.tupleText = self.canvas.create_text(x, y, anchor='w', text=f'Tuple {tupleNum}: {self.blocks[blkNum%50][tupleNum]}')
+        self.frame.update_idletasks()
+        self.canvas.config(scrollregion=self.canvas.bbox("all"))
         
+    def clear_tuples(self):
+        if self.tuplesText:
+            self.canvas.delete(self.tuplesText)
+        for tuple in self.tuples:
+            self.canvas.delete(tuple)
+        for tupleNum in self.tupleNums:
+            self.canvas.delete(tupleNum)
+        if self.tupleText:
+            self.canvas.delete(self.tupleText)
+
+        self.tuples = []
+        self.tupleNums = []
+
+    def clear_blocks(self):
+        for drawn in self.drawnBlocks:
+            self.canvas.delete(drawn)
+        for text in self.drawnBlocksText:
+            self.canvas.delete(text)
+
+        self.drawnBlocks = []
+        self.drawnBlocksText = []
+
