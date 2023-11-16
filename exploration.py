@@ -46,6 +46,7 @@ class DBConn:
 
     def close(self): # close connection to postgresql
         if self.connection:
+            print("closing connection to db...")
             self.cursor.close()
             self.connection.close()
 
