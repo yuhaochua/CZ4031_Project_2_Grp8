@@ -34,6 +34,18 @@ DSP Project 2
 
 3.  **Install Dependencies**
 
-    Use the requirements.txt file to install the necessary dependencies.
+   Use the requirements.txt file to install the necessary dependencies.
 
-    `pip install -r requirements.txt`
+   `pip install -r requirements.txt`
+
+4.  **Running and using the GUI**
+
+   Launch the GUI.
+
+   `python project.py`
+
+   Enter SQL query and press the "Execute" button
+
+   Hover over the nodes to see buffer information
+
+   Click on "Seq Scan" nodes to open new window displaying blocks
