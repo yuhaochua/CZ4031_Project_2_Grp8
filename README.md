@@ -38,11 +38,11 @@ DSP Project 2
 
    `pip install -r requirements.txt`
 
-4.  **Running and using the GUI**
-   
+4. **Running and using the GUI**
+
    Before launching UI, ensure that db connection details are correct in `exploration.py`, on lines 6 to 10
 
-   Launch the GUI.
+   Launch the GUI
 
    `python project.py`
 
