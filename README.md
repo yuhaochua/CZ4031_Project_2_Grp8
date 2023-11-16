@@ -40,11 +40,9 @@ DSP Project 2
 
 4. **Running and using the GUI**
 
-   Before launching UI, ensure that db connection details are correct in `exploration.py`, on lines 6 to 10
+   Before launching UI, ensure that db connection details are correct in `exploration.py`, on lines 6 to 10.
 
-   Launch the GUI
-
-   `python project.py`
+   Launch the GUI `python project.py`.
 
    Enter SQL query and press the "Execute" button.
 
