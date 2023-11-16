@@ -44,8 +44,8 @@ DSP Project 2
 
    `python project.py`
 
-   Enter SQL query and press the "Execute" button
+   Enter SQL query and press the "Execute" button.
 
-   Hover over the nodes to see buffer information
+   Hover over the nodes to see buffer information.
 
-   Click on "Seq Scan" nodes to open new window displaying blocks
+   Click on "Seq Scan" nodes to open new window displaying blocks.
